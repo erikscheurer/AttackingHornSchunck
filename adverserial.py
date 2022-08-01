@@ -151,7 +151,7 @@ def invChangeOfVariable_pertubation(pertubation, orig_image, tol=1e-6):
 # %%
 
 
-def adverserial_attack(img1, img2, img1_orig, img2_orig, target_u, target_v, delta_max=None, alpha=.1, max_iter=100, opt=None, scheduler=None, balance_factor=1.e8, pde_type='energy', nebenbed=Relu_globalaverage, ChangeOfVar=True, return_last_iter=False):
+def adverserial_attack(img1, img2, img1_orig, img2_orig, target_u, target_v, delta_max, alpha=.1, max_iter=100, opt=None, scheduler=None, balance_factor=1.e8, pde_type='energy', nebenbed=Relu_globalaverage, ChangeOfVar=True, return_last_iter=False):
     """Executes adverserial attack.
     optional with L2 norm or upper limit to pertubation.
     optional with given pertubation or the image is the learnable part.
@@ -164,9 +164,9 @@ def adverserial_attack(img1, img2, img1_orig, img2_orig, target_u, target_v, del
         img2_orig {torch.tensor} -- original unchanged image
         target_u {torch.tensor} -- flow target
         target_v {torch.tensor} -- flow target
+        delta_max {float} -- the attack will have a upper limit to the pertubation)
 
     Keyword Arguments:
-        delta_max {float} -- if given as float, the attack will have a upper limit to the pertubation (default: {None})
         alphas {torch.tensor} -- if given as a  (default: {.1})
         max_iter {int} -- maximum number of optimisation iterations (default: {100})
         opt {Optimizer} -- Optimizer containing the learnable variables. If None, LGFGS is used to optimize img1, img2 or pertubation (default: {None})
@@ -314,8 +314,8 @@ def adverserial_attack(img1, img2, img1_orig, img2_orig, target_u, target_v, del
                                             img1_orig, img2_orig, delta_max) < tolerance
 
         # dont check in the first few iterations, because we may initialize as 0:
-        # if a delta_max is given (-> not l2 attack) and if either there has not been a delta that fulfilles the constraint or if this iteration also fulfilles the constraint
-        if iteration > 9 and delta_max and (not found_good_delta or constraint_fulfilled):
+        # if either there has not been a delta that fulfilles the constraint or if this iteration also fulfilles the constraint
+        if iteration > 9 and (not found_good_delta or constraint_fulfilled):
 
             # check if the loss is better than before. If the constraint is fulfilled for the first time, this automatically qualifies to save as the current best.
             if l < bestloss or (not found_good_delta and constraint_fulfilled):
@@ -432,36 +432,6 @@ def full_attack(img1_orig, img2_orig, alpha=.1, scheduler=None, schedule_gamma=.
     return flow_hs, img1, img2, flow_perturbed, target, loss_hist, found_good_delta
 
 
-def adverserial_energy_attack(img1, img2, img1_orig, img2_orig, target_u, target_v, alpha=10, max_iter=100, opt=None, balance_factor=1.):
-    opt = opt or torch.optim.LBFGS([img1, img2])
-
-    u_x = get_f_x(target_u)
-    u_y = get_f_y(target_u)
-    v_x = get_f_x(target_v)
-    v_y = get_f_y(target_v)
-
-    for iteration in range(1, max_iter+1):
-        def closure():
-            opt.zero_grad()
-
-            pde_loss = Energy_loss(img1, img2, target_u,
-                                   target_v, u_x, u_y, v_x, v_y, alpha)
-            neben_loss = l2_nebenbed(img1, img2, img1_orig, img2_orig)
-            assert pde_loss.shape == neben_loss.shape, "shapes of losses dont match"
-            loss = pde_loss+balance_factor*neben_loss
-
-            loss.backward()
-            return loss
-
-        l = closure()  # this is a duplicate for LBFGS Optimizer
-        progress_bar(iteration, max_iter,
-                     title='Adverserial Energy', msg=f'loss = {l}')
-
-        opt.step(closure)
-
-    return img1, img2
-
-
 @convertTypes('tensor')
 def get_deltas(pimg1, pimg2, img1, img2):
     """
@@ -494,6 +464,13 @@ def get_metrics(pimg1, pimg2, img1, img2, pflow, hsflow, gtflow, target_flow):
         flow {torch.tensor} -- original flow
         gtflow {torch.tensor} -- ground truth flow
         type {str or float} -- type of attack. Options: float,'max' for $\delta_{max}$ attack else l2 attack
+
+    Returns:
+        epe {float} -- Average endpointerror between initial and perturbed flow
+        epe_p_gt {float} -- Average endpointerror between perturbed and ground truth flow
+        epe_target {float} -- Average endpointerror between perturbed and target flow
+        epe_gt_target {float} -- Average endpointerror between ground truth and target flow
+        epe_orig_target {float} -- Average endpointerror between original and target flow
     """
     epe = avg_EndPointError(pflow, hsflow)
     if gtflow is not None:

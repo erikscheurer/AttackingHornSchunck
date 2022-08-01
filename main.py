@@ -72,7 +72,10 @@ def process_dataset(dataset: dict, keys=None, n_examples=None, opt_args={"max_it
     """+'\n'*5)
     from utilities import device
     # flowLogger is used to read already determined flows
-    flowLogger = Logger.fromFile('./hornSchunck/logger.json')
+    try:
+        flowLogger = Logger.fromFile('./hornSchunck/logger.json')
+    except FileNotFoundError:
+        flowLogger = Logger('./hornSchunck/logger.json')
     if alpha_type == 'optimal':
         save_hs = False
     else:
@@ -285,18 +288,26 @@ def process_function(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--delta', default=1e-1)
-    parser.add_argument('--lr', default='function')
+    parser.add_argument('--delta', default=1e-1, type=float,
+                        help='The maximum allowed perturbation')
+    parser.add_argument('--lr', default='function',
+                        help='The learning rate. Either a float or "function" to use the function in of the thesis')
     parser.add_argument('--device', default='cuda:0',
-                        help="determines on which device to run")
-    parser.add_argument('--dataset', default='test')
+                        help="determines on which device to run. Useful to run on multiple GPUs")
+    parser.add_argument('--dataset', default='test',
+                        help='The dataset to use. Either "train" or "test"', choices=['train', 'test'])
     parser.add_argument('--alpha', default='.1',
                         help="Type of alpha: \nOptions: 'optimal' to look at flowLogger or any float")
-    parser.add_argument('--target', default=.1)
-    parser.add_argument('--pdetype', default='pde')
-    parser.add_argument('--zero_init', default='True')
-    parser.add_argument('--n_examples', default=None)
-    parser.add_argument('--save', default=True)
+    parser.add_argument('--target', default=.1,
+                        help='The target flow. Either a float or "inv" to use the inverse of the original flow')
+    parser.add_argument('--pdetype', default='energy',
+                        help='The type of PDE to use. Either "energy" or "pde"', choices=['energy', 'pde'])
+    parser.add_argument('--zero_init', default='True',
+                        help='Whether to initialize the flow with zeros or randomly')
+    parser.add_argument('--n_examples', default=None,
+                        help='The number of examples to use _in each scene_. If None, all examples are used')
+    parser.add_argument('--save', default=True,
+                        help='Whether to save the perturbations and perturbed flows')
 
     args = parser.parse_args()
     print(args)
