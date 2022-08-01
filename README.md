@@ -32,9 +32,9 @@ The repository is structured as follows:
 
 The full pip list used in the thesis is available in `requirements.txt`. It can be installed through
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+```bash
+pip install -r requirements.txt
+```
 
 ## Usage
 
@@ -44,6 +44,6 @@ For example the following command will run the attack for the full Sintel test d
     python3 main.py --delta 0.01 --dataset test --target 0
 ```
 
-The program creates a folder `hornSchunck` in the current directory to save the results from the evaluations of the original images of Horn and Schunck. This is to avoid redundant evaluations when executing multiple perturbations. If `--save` is true, the perturbations and perturbed flows are saved in `results/` where there is also the logger of the current run.
+The program creates a folder `hornSchunck` in the current directory to save the results from the evaluations of the original images of Horn and Schunck. (You might have to create a folder `hornSchunck/flowResults/`) This is to avoid redundant evaluations when executing multiple perturbations. If `--save` is true, the perturbations and perturbed flows are saved in `results/` where there is also the logger of the current run.
 
 To evaluate a series of loggers run `evaluate_loggers(folder,...)` in `datalogger.py` where `folder` is the path to the folder containing all loggers. This will create a plot with the specifications you give to the function.
